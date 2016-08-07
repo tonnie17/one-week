@@ -16,7 +16,7 @@ python classify.py --ext 目录路径
 ```
 
 效果：
-
+```
 ├── DS_Store
 ├── bat
 ├── bin
@@ -44,6 +44,7 @@ python classify.py --ext 目录路径
 ├── xml
 ├── y
 └── yml
+```
 
 按修改时间分类
 
@@ -53,6 +54,7 @@ python classify.py --mtime 目录路径
 
 效果：
 
+```
 ├── 2014
 │   └── 10
 │       └── 24
@@ -70,7 +72,7 @@ python classify.py --mtime 目录路径
     └── 8
         ├── 6
         └── 7
-
+```
 还原目录
 
 ```
@@ -78,6 +80,7 @@ python classify.py --backup 目录路径
 ```
 效果：
 
+```
 ├── assets
 │   ├── 2e015166
 │   ├── 4893405d
@@ -130,3 +133,4 @@ python classify.py --backup 目录路径
 └── themes
     └── classic
         └── views
+```
