@@ -1,13 +1,18 @@
 #-*- coding:utf-8 -*-
-from collections import defaultdict
+import argparse
 import os
-import sys
 import json
 import shutil
 from uuid import uuid4
 
+
 DEFAULT_KEY = 'default'
 BACKUP_FILE = 'backup.json'
+
+# 防止迁移的时候出现文件重名的情况
+def unique_covert(file_path):
+    new_path = '|'.join(file_path.split(os.sep)[1:-1])
+    return os.path.basename(file_path) + '(' + new_path + ')'
 
 def coroutine(gen):
     def wrapper(*arg, **kws):
@@ -21,7 +26,7 @@ def save_back_up(target_dir):
     string_len   = len(target_dir)
     back_up_file = os.path.join(target_dir, BACKUP_FILE)
     if os.path.exists(back_up_file):
-        do_back_up(target_dir)
+        go_back(target_dir)
     back_up_tree = {}
     while True:
         tup = yield
@@ -32,8 +37,10 @@ def save_back_up(target_dir):
     with open(back_up_file, 'w') as buf:
         json.dump(back_up_tree, buf, indent=4)        
 
+# 按扩展名分类
 @coroutine
 def classify_by_ext(target_dir, tmp_dir):
+    from collections import defaultdict
     ext_files = defaultdict(list)
     for dir_ in os.walk(target_dir):
         for f in dir_[2]:
@@ -45,12 +52,13 @@ def classify_by_ext(target_dir, tmp_dir):
         if not os.path.exists(dest_dir):
             os.makedirs(dest_dir)
         for file_path in file_list:
-            src = '-'.join(file_path.split('/'))
+            src  = unique_covert(file_path)
             dest = os.path.join(dest_dir, src)
             shutil.move(file_path, dest)
             yield (os.path.join(target_dir, ext, src), os.path.relpath(file_path, target_dir))
     yield None
 
+# 按修改时间分类
 @coroutine
 def classify_by_mtime(target_dir, tmp_dir):
     import time
@@ -63,14 +71,14 @@ def classify_by_mtime(target_dir, tmp_dir):
             dest_dir  = os.path.join(tmp_dir, y, m, d)
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
-            src = '-'.join(file_path.split('/'))
+            src  = unique_covert(file_path)
             dest = os.path.join(dest_dir, src)
             shutil.move(file_path, dest)
             yield (os.path.join(target_dir, y, m, d, src), os.path.relpath(file_path, target_dir))
     yield None
 
 
-def do_back_up(target_dir):
+def go_back(target_dir):
     tmp_dir = os.path.join(os.path.dirname(os.path.dirname(target_dir)), str(uuid4()))
     os.mkdir(tmp_dir)
     back_up_tree = {}
@@ -111,15 +119,20 @@ def run(target_dir, classify_func):
         pass
 
 def _main():
-    op         = sys.argv[1]
-    target_dir = sys.argv[2]
-    DIR_CACHE  = list(os.walk(target_dir))
-    if op == '--ext':
+    parser = argparse.ArgumentParser(description='对目录进行文件整理归类.')
+    parser.add_argument('directory', type=str, help='目标目录路径')
+    parser.add_argument('-t', '--type', type=str, default='ext', choices=['ext', 'mtime', 'back'], help='分类方式')
+
+    args       = parser.parse_args()
+    target_dir = args.directory
+    op         = args.type
+
+    if op == 'ext':
         run(target_dir, classify_by_ext)
-    elif op == '--mtime':
+    elif op == 'mtime':
         run(target_dir, classify_by_mtime)
-    elif op == '--backup':
-        do_back_up(target_dir)
+    elif op == 'back':
+        go_back(target_dir)
     else:
         raise Exception('参数错误')
 

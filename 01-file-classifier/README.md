@@ -9,10 +9,24 @@
 
 ## 用法
 
+```
+usage: classify.py [-h] [-t {ext,mtime,back}] directory
+
+对目录进行文件整理归类.
+
+positional arguments:
+  directory             目标目录路径
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t {ext,mtime,back}, --type {ext,mtime,back}
+                        分类方式
+```
+
 按扩展名分类
 
 ```
-python classify.py --ext 目录路径 
+python classify.py -t ext 目录路径 
 ```
 
 效果：
@@ -48,7 +62,7 @@ python classify.py --ext 目录路径
 按修改时间分类
 
 ```
-python classify.py --mtime 目录路径
+python classify.py -t mtime 目录路径
 ```
 
 效果：
@@ -74,7 +88,7 @@ python classify.py --mtime 目录路径
 还原目录
 
 ```
-python classify.py --backup 目录路径
+python classify.py -t back 目录路径
 ```
 效果：
 
