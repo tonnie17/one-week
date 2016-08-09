@@ -78,9 +78,29 @@ def classify_by_mtime(target_dir, tmp_dir):
             yield (os.path.join(y, m, d, src), rel_file_path)
     yield None
 
+# 按字母分类
+@coroutine
+def classify_by_first_letter(target_dir, tmp_dir):
+    for dir_ in os.walk(target_dir):
+        for f in dir_[2]:
+            abs_file_path = os.path.join(dir_[0], f)
+            rel_file_path = os.path.relpath(abs_file_path, target_dir)
+            if f[0].isalnum():
+                dest_dir = os.path.join(tmp_dir, f[0])
+                if not os.path.exists(dest_dir):
+                    os.makedirs(dest_dir)
+                src = unique_covert(rel_file_path)
+                dest_file = os.path.join(dest_dir, src)
+                shutil.move(abs_file_path, dest_file)
+                yield (os.path.join(f[0], src), rel_file_path)
+            else:
+                shutil.move(abs_file_path, os.path.join(tmp_dir, f))
+                yield (f, rel_file_path)
+    yield None
+
 
 def go_back(target_dir):
-    tmp_dir = os.path.join(os.path.dirname(os.path.dirname(target_dir)), str(uuid4()))
+    tmp_dir = os.path.join(os.path.dirname(target_dir), str(uuid4()))
     os.mkdir(tmp_dir)
     back_up_tree = {}
     back_up_file = os.path.join(target_dir, BACKUP_FILE)
@@ -102,7 +122,7 @@ def go_back(target_dir):
     os.rename(tmp_dir, target_dir)
 
 def run(target_dir, classify_func):
-    tmp_dir = os.path.join(os.path.dirname(os.path.dirname(target_dir)), str(uuid4()))
+    tmp_dir = os.path.join(os.path.dirname(target_dir), str(uuid4()))
     os.mkdir(tmp_dir)
 
     save_backup_gen = save_back_up(target_dir)
@@ -123,7 +143,7 @@ def run(target_dir, classify_func):
 def _main():
     parser = argparse.ArgumentParser(description='对目录进行文件整理归类.')
     parser.add_argument('directory', type=str, help='目标目录路径')
-    parser.add_argument('-t', '--type', type=str, default='ext', choices=['ext', 'mtime', 'back'], help='分类方式')
+    parser.add_argument('-t', '--type', type=str, default='ext', choices=['ext', 'mtime', 'word', 'back'], help='分类方式')
 
     args       = parser.parse_args()
     target_dir = args.directory
@@ -133,6 +153,8 @@ def _main():
         run(target_dir, classify_by_ext)
     elif op == 'mtime':
         run(target_dir, classify_by_mtime)
+    elif op == 'word':
+        run(target_dir, classify_by_first_letter)
     elif op == 'back':
         go_back(target_dir)
     else:
