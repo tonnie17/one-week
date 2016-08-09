@@ -11,8 +11,8 @@ BACKUP_FILE = 'backup.json'
 
 # 防止迁移的时候出现文件重名的情况
 def unique_covert(file_path):
-    new_path = '|'.join(file_path.split(os.sep)[1:-1])
-    return os.path.basename(file_path) + '(' + new_path + ')'
+    new_path = '|'.join(file_path.split(os.sep)[:-1])
+    return os.path.basename(file_path) + ' (' + new_path + ')'
 
 def coroutine(gen):
     def wrapper(*arg, **kws):
@@ -52,10 +52,10 @@ def classify_by_ext(target_dir, tmp_dir):
         if not os.path.exists(dest_dir):
             os.makedirs(dest_dir)
         for file_path in file_list:
-            src  = unique_covert(file_path)
+            src  = unique_covert(os.path.relpath(file_path, target_dir))
             dest = os.path.join(dest_dir, src)
             shutil.move(file_path, dest)
-            yield (os.path.join(target_dir, ext, src), os.path.relpath(file_path, target_dir))
+            yield (os.path.join(ext, src), os.path.relpath(file_path, target_dir))
     yield None
 
 # 按修改时间分类
@@ -65,16 +65,17 @@ def classify_by_mtime(target_dir, tmp_dir):
     for dir_ in os.walk(target_dir):
         path = dir_[0]
         for f in dir_[2]:
-            file_path = os.path.join(path, f)
-            mtime     = os.stat(file_path)[8]
+            abs_file_path = os.path.join(path, f)
+            rel_file_path = os.path.relpath(abs_file_path, target_dir)
+            mtime     = os.stat(abs_file_path)[8]
             (y, m, d) = map(str, time.localtime(mtime)[:3])
             dest_dir  = os.path.join(tmp_dir, y, m, d)
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
-            src  = unique_covert(file_path)
-            dest = os.path.join(dest_dir, src)
-            shutil.move(file_path, dest)
-            yield (os.path.join(target_dir, y, m, d, src), os.path.relpath(file_path, target_dir))
+            src  = unique_covert(rel_file_path)
+            dest_file = os.path.join(dest_dir, src)
+            shutil.move(abs_file_path, dest_file)
+            yield (os.path.join(y, m, d, src), rel_file_path)
     yield None
 
 
@@ -90,11 +91,12 @@ def go_back(target_dir):
     if not back_up_tree:
         raise Exception('备份文件已损坏或不存在')
     for src, old in back_up_tree.items():
-        dest     = os.path.join(tmp_dir, old)
-        dest_dir = os.path.dirname(dest)
+        src_file  = os.path.join(target_dir, src)
+        dest_file = os.path.join(tmp_dir, old)
+        dest_dir  = os.path.dirname(dest_file)
         if not os.path.exists(dest_dir):
             os.makedirs(dest_dir)
-        shutil.move(src, dest)
+        shutil.move(src_file, dest_file)
 
     shutil.rmtree(target_dir, ignore_errors=False)
     os.rename(tmp_dir, target_dir)
@@ -104,7 +106,7 @@ def run(target_dir, classify_func):
     os.mkdir(tmp_dir)
 
     save_backup_gen = save_back_up(target_dir)
-    classify_gen = classify_func(target_dir, tmp_dir)
+    classify_gen    = classify_func(target_dir, tmp_dir)
     while True:
         tup = classify_gen.send(None)
         if not tup:
