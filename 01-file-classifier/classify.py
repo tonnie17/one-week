@@ -3,8 +3,9 @@ import argparse
 import os
 import json
 import shutil
+import sys
+import time
 from uuid import uuid4
-
 
 DEFAULT_KEY = 'default'
 BACKUP_FILE = 'backup.json'
@@ -12,6 +13,8 @@ BACKUP_FILE = 'backup.json'
 # 防止迁移的时候出现文件重名的情况
 def unique_covert(file_path):
     new_path = '|'.join(file_path.split(os.sep)[:-1])
+    if not new_path:
+        return file_path
     return os.path.basename(file_path) + ' (' + new_path + ')'
 
 def coroutine(gen):
@@ -38,7 +41,6 @@ def save_back_up(target_dir):
         json.dump(back_up_tree, buf, indent=4)        
 
 # 按扩展名分类
-@coroutine
 def classify_by_ext(target_dir, tmp_dir):
     from collections import defaultdict
     ext_files = defaultdict(list)
@@ -59,7 +61,6 @@ def classify_by_ext(target_dir, tmp_dir):
     yield None
 
 # 按修改时间分类
-@coroutine
 def classify_by_mtime(target_dir, tmp_dir):
     import time
     for dir_ in os.walk(target_dir):
@@ -79,7 +80,6 @@ def classify_by_mtime(target_dir, tmp_dir):
     yield None
 
 # 按字母分类
-@coroutine
 def classify_by_first_letter(target_dir, tmp_dir):
     for dir_ in os.walk(target_dir):
         for f in dir_[2]:
@@ -100,7 +100,7 @@ def classify_by_first_letter(target_dir, tmp_dir):
 
 
 def go_back(target_dir):
-    tmp_dir = os.path.join(os.path.dirname(target_dir), str(uuid4()))
+    tmp_dir = os.path.join(os.path.dirname(os.path.dirname(target_dir)), str(uuid4()))
     os.mkdir(tmp_dir)
     back_up_tree = {}
     back_up_file = os.path.join(target_dir, BACKUP_FILE)
@@ -122,16 +122,21 @@ def go_back(target_dir):
     os.rename(tmp_dir, target_dir)
 
 def run(target_dir, classify_func):
-    tmp_dir = os.path.join(os.path.dirname(target_dir), str(uuid4()))
+    tmp_dir = os.path.join(os.path.dirname(os.path.dirname(target_dir)), str(uuid4()))
     os.mkdir(tmp_dir)
 
     save_backup_gen = save_back_up(target_dir)
     classify_gen    = classify_func(target_dir, tmp_dir)
+    finished        = 0
     while True:
-        tup = classify_gen.send(None)
+        tup      = classify_gen.send(None)
+        finished += 1
+        sys.stdout.write(u'已完成%s个文件\r' % finished)
+        sys.stdout.flush()
         if not tup:
             break
         save_backup_gen.send(tup)
+    print(u'已完成%s个文件\r' % finished)
 
     shutil.rmtree(target_dir, ignore_errors=False)
     os.rename(tmp_dir, target_dir)
@@ -157,9 +162,9 @@ def _main():
         run(target_dir, classify_by_first_letter)
     elif op == 'back':
         go_back(target_dir)
+        print ('恢复完成')
     else:
         raise Exception('参数错误')
 
 if __name__ == '__main__':
     _main()
-
