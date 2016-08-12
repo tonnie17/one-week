@@ -1,3 +1,4 @@
+#!/usr/bin/python
 #-*- coding:utf-8 -*-
 import argparse
 import os
@@ -8,7 +9,7 @@ import time
 from uuid import uuid4
 
 DEFAULT_KEY = 'default'
-BACKUP_FILE = 'backup.json'
+BACKUP_FILE = '.backup.json'
 
 # 防止迁移的时候出现文件重名的情况
 def unique_covert(file_path):
@@ -62,28 +63,33 @@ def classify_by_ext(target_dir, tmp_dir):
 
 # 按修改时间分类
 def classify_by_mtime(target_dir, tmp_dir):
-    import time
     for dir_ in os.walk(target_dir):
         path = dir_[0]
         for f in dir_[2]:
             abs_file_path = os.path.join(path, f)
             rel_file_path = os.path.relpath(abs_file_path, target_dir)
-            mtime     = os.stat(abs_file_path)[8]
-            (y, m, d) = map(str, time.localtime(mtime)[:3])
-            dest_dir  = os.path.join(tmp_dir, y, m, d)
+            if os.path.islink(abs_file_path):
+                rel_dest_dir = 'link'
+                dest_dir     = os.path.join(tmp_dir, 'link')
+            else:
+                mtime        = os.stat(abs_file_path)[8]
+                (y, m, d)    = map(str, time.localtime(mtime)[:3])
+                dest_dir     = os.path.join(tmp_dir, y, m, d)
+                rel_dest_dir = os.path.join(y, m, d)
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
-            src  = unique_covert(rel_file_path)
+            src       = unique_covert(rel_file_path)
             dest_file = os.path.join(dest_dir, src)
             shutil.move(abs_file_path, dest_file)
-            yield (os.path.join(y, m, d, src), rel_file_path)
+            yield (os.path.join(rel_dest_dir, src), rel_file_path)
     yield None
 
 # 按字母分类
 def classify_by_first_letter(target_dir, tmp_dir):
     for dir_ in os.walk(target_dir):
+        path = dir_[0]
         for f in dir_[2]:
-            abs_file_path = os.path.join(dir_[0], f)
+            abs_file_path = os.path.join(path, f)
             rel_file_path = os.path.relpath(abs_file_path, target_dir)
             if f[0].isalnum():
                 dest_dir = os.path.join(tmp_dir, f[0])
@@ -100,6 +106,7 @@ def classify_by_first_letter(target_dir, tmp_dir):
 
 
 def go_back(target_dir):
+    target_dir = target_dir.decode('utf-8')
     tmp_dir = os.path.join(os.path.dirname(os.path.dirname(target_dir)), str(uuid4()))
     os.mkdir(tmp_dir)
     back_up_tree = {}
@@ -128,6 +135,7 @@ def run(target_dir, classify_func):
     save_backup_gen = save_back_up(target_dir)
     classify_gen    = classify_func(target_dir, tmp_dir)
     finished        = 0
+    begin           = time.time()
     while True:
         tup      = classify_gen.send(None)
         finished += 1
@@ -136,7 +144,7 @@ def run(target_dir, classify_func):
         if not tup:
             break
         save_backup_gen.send(tup)
-    print(u'已完成%s个文件\r' % finished)
+    print(u'已完成%s个文件，耗时%s秒' % (finished, time.time() - begin))
 
     shutil.rmtree(target_dir, ignore_errors=False)
     os.rename(tmp_dir, target_dir)
