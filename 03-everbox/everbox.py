@@ -5,6 +5,7 @@ import binascii
 import hashlib
 import os
 import sys
+import base64
 from datetime import datetime, date
 
 try:
@@ -23,7 +24,27 @@ except Exception,e:
     print('无法连接到evernote，请检查网络连接')
     sys.exit(-1)
 
-dev_token = "S=s1:U=92d14:E=15de8ebccac:C=156913a9da8:P=1cd:A=en-devtoken:V=2:H=ca0bbceb23208c3cde8227aa5912761a"
+dev_token  = "S=s1:U=92d14:E=15de8ebccac:C=156913a9da8:P=1cd:A=en-devtoken:V=2:H=ca0bbceb23208c3cde8227aa5912761a"
+
+from contextlib import contextmanager
+
+_loading = True
+
+def loading(hint):
+    while _loading:
+        sys.stdout.write(hint + '\r')
+        sys.stdout.flush()
+
+# 耗时操作的提示
+@contextmanager
+def open_loading(hint):
+    from threading import Thread
+    global _loading
+    _loading = True
+    t = Thread(target=loading, args=[hint])
+    t.start()
+    yield
+    _loading = False
 
 class LazyGet:
     def __init__(self, construct_func, hint=None, end_hint=None, excp_hint=None):
@@ -56,7 +77,7 @@ def create_box(name):
 
 def create_file(title, content, box_id='', image_resource=None):
     hash_hex = ''
-    file = Types.Note()
+    file     = Types.Note()
     if box_id:
         file.notebookGuid = box_id
 
@@ -65,7 +86,7 @@ def create_file(title, content, box_id='', image_resource=None):
         file.resources         = [resource]
         hash_hex               = binascii.hexlify(image_hash)
 
-    file.title = title
+    file.title   = title
     file.content = '''<?xml version="1.0" encoding="UTF-8"?>
     <!DOCTYPE en-note SYSTEM "http://xml.evernote.com/pub/enml2.dtd">
     <en-note><caption>%s</caption>''' % content
@@ -83,7 +104,7 @@ def parse_file(content):
         pass
 
     media_index = content.find('<en-media')
-    content = content[:media_index]
+    content     = content[:media_index]
 
     file_lst = content.split('<br/>')
     for content in file_lst:
@@ -101,14 +122,14 @@ def load_file(guid):
     file_content = parse_file(file.content)
     return {
         'title': file.title,
-        'content': file_content,
+        'content': base64.b64decode(file_content + '=' * (-len(file_content) % 4)),
         'created': date.fromtimestamp(file.created / 100).strftime('%d/%m/%Y')
     }
 
 def get_box_by_id(box_id):
     if len(box_id) < 4:
         print ('id匹配长度至少为4')
-        return ''
+        sys.exit(-1)
     for box in get_boxes():
         if box.guid.startswith(box_id):
             return box
@@ -157,7 +178,7 @@ def init(args):
     boxname = args.box
     box     = create_box(boxname)        
     try:
-        box     = get_box_store().createNotebook(dev_token, box)
+        box = get_box_store().createNotebook(dev_token, box)
         if not box:
             raise
         print ('创建成功，id为：%s' % box.guid)
@@ -170,8 +191,8 @@ def pull(args):
     finished   = 0
     for f in args.files:
         try:
-            flag       = os.path.basename(f)
-            file       = load_file(flag)
+            flag = os.path.basename(f)
+            file = load_file(flag)
             if not file:
                 box         = get_box(args.box)
                 file_filter = NoteTypes.NoteFilter()
@@ -192,8 +213,7 @@ def pull(args):
             finished += 1
             sys.stdout.write('已拉取：%s个文件\r' % finished)
             sys.stdout.flush()
-        except Exception,e:
-            print e
+        except Exception, e:
             print ('文件：%s拉取失败，跳过..' % f)
     print('成功拉取：%s个文件' % finished)
 
@@ -215,7 +235,7 @@ def list(args):
         boxes = get_boxes()
         print ('| 仓库id                           | 仓库名称 | 创建时间')
         for box in boxes:
-            print box.guid, box.name, box.serviceCreated
+            print box.guid, box.name, datetime_format(box.serviceCreated)
     else:
         box = get_box(args.box)
         list_box(box)
@@ -234,11 +254,12 @@ def push(args):
                 file = create_file(title, fp.read(), box.guid, '')
             else:
                 print ('无指定仓库，将使用默认仓库')
-                file = create_file(title, fp.read(), None, '')
+                file = create_file(title, base64.b64encode(fp.read()), None, '')
             push_to_box(file)
             print ('%s 上传成功' % abs_path)
     except Exception, e:
-        print ('上传%s时，发生异常' % f)
+        print e
+        print ('上传%s时，发生异常' % abs_path)
 
 def pushall(args):
     files  = args.files
@@ -246,11 +267,11 @@ def pushall(args):
     for f in files:
         abs_path = os.path.abspath(os.path.normpath(f))
         if not os.path.exists(abs_path):
-            print ('%s：文本路径不存在' %f)
-            break
+            print ('%s：文本路径不存在，跳过' % f)
+            continue
         if os.path.getsize(abs_path) > 1000 * 1000 * 10: # 10M
-            print ('%s: 文本体积大于10M' %f)
-            break
+            print ('%s: 文本体积大于10M，跳过' % f)
+            continue
         to_add.append(os.path.abspath(os.path.normpath(f)))
     else:
         total    = len(to_add)
@@ -334,7 +355,7 @@ if __name__ == '__main__':
     push_cmd.add_argument('file')
     push_cmd.set_defaults(func=push)
 
-    push_all_cmd  = subparsers.add_parser('pushall', help='添加批量文本到仓库', description='添加批量文本到仓库')
+    push_all_cmd = subparsers.add_parser('pushall', help='添加批量文本到仓库', description='添加批量文本到仓库')
     push_all_cmd.add_argument('-b', '--box', help='仓库id或仓库名字')
     push_all_cmd.add_argument('files', nargs='*', help='文本路径，多个以空格间隔')
     push_all_cmd.set_defaults(func=pushall)
