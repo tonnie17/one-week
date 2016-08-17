@@ -1,11 +1,11 @@
 # everbox.py
 
-evernote as a file sandbox!
+everbox是一个将evernote作为文件沙盒的接口集合，利用evernote作为文本的存储仓库，方便地对文本文件进行管理。
 
 ## 用法
 
 ```
-usage: everbox.py [-h] {init,push,pushall,list,pull,log} ...
+usage: everbox.py [-h] {init,push,pushall,list,drop,drag,remove,pull,log} ...
 
 文本备份助手.
 
@@ -13,11 +13,14 @@ optional arguments:
   -h, --help            show this help message and exit
 
 操作命令:
-  {init,push,pushall,list,pull,log}
+  {init,push,pushall,list,drop,drag,remove,pull,log}
     init                新建一个仓库
     push                添加文本到仓库
     pushall             添加批量文本到仓库
     list                列出仓库或文本
+    drop                删除一个仓库
+    drag                从远程拉取一个文件同时删除记录
+    remove              从仓库删除指定id的文本
     pull                从仓库拉取文本
     log                 查看文本记录信息
 ```
@@ -173,3 +176,69 @@ python everbox.py pull b00204f8-41d0-43bb-8fc3-17b3a654360f  .
 文件 /Users/tonnie/github/one-week/03-everbox/README.md 已存在，是否覆盖，是请按y，不是请输入n：y
 成功拉取：1个文件
 ```
+
+### remove 从仓库删除指定的文本
+
+```
+usage: everbox.py remove [-h] guid
+
+从仓库删除指定id的文本
+
+positional arguments:
+  guid        文本guid
+```
+
+```
+python everbox.py remove d8bc4812-bfc2-44cd-9aee-bc7a92887e70
+```
+
+输出
+
+```
+删除成功
+```
+
+### drag 从远程拉取一个文件同时删除记录
+
+```
+usage: everbox.py drag [-h] guid directory
+
+从远程拉取一个文本同时删除记录
+
+positional arguments:
+  guid        文本guid
+  directory   拉取目录
+```
+
+```
+python everbox.py drag f7c7b2be-c247-4c2a-8001-186d27942cce ~
+```
+
+输出
+
+```
+拉取完成
+删除成功
+```
+
+### drop 删除一个仓库
+
+```
+usage: everbox.py drop [-h] box
+
+删除一个仓库
+
+positional arguments:
+  box         仓库id或仓库名字
+```
+
+```
+python everbox.py drop 我的第一个笔记本
+```
+
+输出
+
+```
+删除成功
+```
+

@@ -94,12 +94,7 @@ def parse_file(content):
 def load_file(guid):
     file = None
     try:
-        file = get_box_store().getNote(dev_token,
-                                  guid,
-                                  True,
-                                  True,
-                                  False,
-                                  False)
+        file = get_box_store().getNote(dev_token, guid, True, True, False, False)
     except Exception, e:
         return None
 
@@ -147,6 +142,17 @@ def get_yn_input(msg):
             break
     return True if res == 'y' else False
 
+def get_abs_dir(directory):
+    dest_dir = directory or os.path.abspath('.')
+    if not os.path.exists(dest_dir) or not os.path.isdir(dest_dir):
+        print ('指定目录不存在')
+        sys.exit(-1)
+    dest_dir = os.path.abspath(os.path.normpath(os.path.expanduser(dest_dir)))
+    return dest_dir
+
+def datetime_format(time):
+    return datetime.fromtimestamp(int(str(time)[:-3])).strftime('%Y-%m-%d %H:%M:%S')
+
 def init(args):
     boxname = args.box
     box     = create_box(boxname)        
@@ -159,11 +165,7 @@ def init(args):
         print ('创建失败')
 
 def pull(args):
-    dest_dir = args.directory or os.path.expanduser('~')
-    if not os.path.exists(dest_dir) or not os.path.isdir(dest_dir):
-        print ('指定目录不存在')
-        return
-    dest_dir   = os.path.abspath(os.path.normpath(dest_dir))
+    dest_dir   = get_abs_dir(args.directory)
     skip_cover = args.yes
     finished   = 0
     for f in args.files:
@@ -204,17 +206,16 @@ def list(args):
         if not files:
             print '仓库没有任何文本'
         else:
-            print ('| 文本id\t\t\t| 文本名称 |')
-            for f in files:
-                print "%s %s" %(f.guid, f.title)
+            print ('| 文本id                           | 文本名称 | 创建时间')
+            for f in reversed(files):
+                print "%s %s %s" %(f.guid, f.title, datetime_format(f.created))
 
     # 没有指定仓库，则列出所有仓库
     if args.box is None:
         boxes = get_boxes()
-        print ('| 文本id\t\t\t| 仓库名称 |')
+        print ('| 仓库id                           | 仓库名称 | 创建时间')
         for box in boxes:
-            print box.guid, box.name
-            # n.serviceCreated, n.serviceUpdated
+            print box.guid, box.name, box.serviceCreated
     else:
         box = get_box(args.box)
         list_box(box)
@@ -272,6 +273,35 @@ def pushall(args):
                 print ('上传%s时，发生异常' % f)
         print('已上传(%s/%s)个文本' % (finished, total))
 
+def remove(args):
+    guid = args.guid
+    try:
+        get_box_store().deleteNote(dev_token, guid)
+        print ('删除成功')
+    except:
+        print ('删除失败')
+
+def drop(args):
+    box = get_box(args.box)
+    try:
+        get_box_store().expungeNotebook(dev_token, box.guid)
+        print ('删除成功')
+    except:
+        print ('删除失败')
+
+def drag(args):
+    dest_dir = get_abs_dir(args.directory)
+    file     = load_file(args.guid)
+    if not file:
+        print ('文件拉取失败')
+    output_file = os.path.join(os.path.join(dest_dir, file['title']));
+    if os.path.exists(output_file):
+        if not get_yn_input('文件 %s 已存在，是否覆盖' % output_file):
+            return
+    with open(output_file, 'w') as fp:
+        fp.write(file['content'])
+    print ('拉取完成')
+    remove(args)
 
 def log(args):
     file     = args.file
@@ -286,11 +316,9 @@ def log(args):
     if not files:
         print ('仓库中不存在该文件的记录')
         return
-    print ('| 文本id\t\t\t| 文本名称 | 仓库\t | 创建时间')
+    print ('| 文本id                           | 文本名称 | 仓库\t | 创建时间')
     for f in files:
-        print '%s %s %s %s' %(f.guid, f.title, get_box_by_id(f.notebookGuid).name, 
-            datetime.fromtimestamp(int(str(f.created)[:-3])).strftime('%Y-%m-%d %H:%M:%S'))
-
+        print '%s %s %s %s' %(f.guid, f.title, get_box_by_id(f.notebookGuid).name, datetime_format(f.created))
 
 
 if __name__ == '__main__':
@@ -314,6 +342,19 @@ if __name__ == '__main__':
     list_cmd = subparsers.add_parser('list', help='列出仓库或文本', description='列出仓库或文本')
     list_cmd.add_argument('box', nargs='?', help='仓库id或仓库名字')
     list_cmd.set_defaults(func=list)
+
+    drop_cmd = subparsers.add_parser('drop', help='删除一个仓库', description='删除一个仓库')
+    drop_cmd.add_argument('box', help='仓库id或仓库名字')
+    drop_cmd.set_defaults(func=drop)
+
+    drag_cmd = subparsers.add_parser('drag', help='从远程拉取一个文件同时删除记录', description='从远程拉取一个文件同时删除记录')
+    drag_cmd.add_argument('guid', help='文本guid')
+    drag_cmd.add_argument('directory', type=str, help='拉取目录')
+    drag_cmd.set_defaults(func=drag)
+
+    remove_cmd = subparsers.add_parser('remove', help='从仓库删除指定id的文本', description='从仓库删除指定id的文本')
+    remove_cmd.add_argument('guid', help='文本guid')
+    remove_cmd.set_defaults(func=remove)
 
     pull_cmd = subparsers.add_parser('pull', help='从仓库拉取文本', description='从仓库拉取文本')
     pull_cmd.add_argument('-b', '--box', help='仓库id或仓库名字')
