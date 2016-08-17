@@ -17,17 +17,23 @@ CITY_CACHE_FILE = '.cities'
 CITY_LIST_URL   = 'https://kyfw.12306.cn/otn/resources/js/framework/station_name.js'
 ACTION_URL      = 'https://kyfw.12306.cn/otn/lcxxcx/query?purpose_codes={ticket_type}&queryDate={train_time}&from_station={from_city}&to_station={to_city}'
 
+# 对月份进行补零
 def add_zero(month):
     if int(month) < 10:
         month = '0' + str(int(month))
     return month
 
+# 默认为今天
 def default_date():
     now = datetime.now()
     return '-'.join([str(now.year), str(add_zero(now.month)), str(now.day)])
 
+# 格式化输入日期
+# 如：
+# 8-14 -> 2016-08-14
+# 2016:8:14 -> 2016-08-14
+#  -> 2016-08-14
 def date_format(input_date):
-    
     if not input_date:
         return default_date()
     res = re.match(r'(([0-9]{4})[-|\\|:])?([0-9]{1,2})[-|\\|:]([0-9]{2})', input_date)
@@ -48,6 +54,7 @@ def date_format(input_date):
         print ('输入日期格式错误')
         sys.exit(-1)
 
+# 加载城市信息
 def load_cities():
     global CITY_CACHE
     if CITY_CACHE is not None:
@@ -74,7 +81,7 @@ def load_cities():
     CITY_CACHE = cities
     return cities
 
-
+# 查询操作
 def search(from_city, to_city, train_time, ticket_type='ADULT'):
     ssl_ctx     = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
     cities      = load_cities()
@@ -112,16 +119,18 @@ def search(from_city, to_city, train_time, ticket_type='ADULT'):
             r['ze_num']
         ))
 
+# 获取ip
 def getip():
     url    = 'http://ip.chinaz.com/'
     opener = urllib2.urlopen(url, timeout=5)
     if url == opener.geturl():
         info = opener.read()
-        res   = re.search('\d+\.\d+\.\d+\.\d+',info)
+        res  = re.search('\d+\.\d+\.\d+\.\d+',info)
         if res:
             return res.group(0)
     return None
 
+# 根据ip获取地址
 def getaddr(fresh=False):
     addr_cache_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.addr')
     if not fresh and os.path.exists(addr_cache_file):
@@ -152,6 +161,7 @@ def get_yn_input(msg):
             break
     return True if res == None else False
 
+# 默认模式
 def guide():
     try:
         cities = load_cities()

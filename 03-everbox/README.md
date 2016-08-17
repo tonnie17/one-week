@@ -5,7 +5,7 @@ evernote as a file sandbox!
 ## 用法
 
 ```
-usage: everbox.py [-h] {push,pushall,list,pull,log} ...
+usage: everbox.py [-h] {init,push,pushall,list,pull,log} ...
 
 文本备份助手.
 
@@ -13,10 +13,11 @@ optional arguments:
   -h, --help            show this help message and exit
 
 操作命令:
-  {push,pushall,list,pull,log}
+  {init,push,pushall,list,pull,log}
+    init                新建一个仓库
     push                添加文本到仓库
     pushall             添加批量文本到仓库
-    list                列出仓库文本
+    list                列出仓库或文本
     pull                从仓库拉取文本
     log                 查看文本记录信息
 ```
@@ -32,6 +33,25 @@ pip install evernote
 登录[Evernote开发者](http://sandbox.evernote.com)，获取开发Token，把获取到的token替换掉代码中的dev_token。
 
 ## 基本操作
+
+### init 新建一个仓库
+
+```
+usage: everbox.py init [-h] box
+
+新建一个仓库
+
+positional arguments:
+  box         仓库名字
+```
+
+```
+python everbox.py init test
+```
+
+```
+创建成功，id为：0c6e25c4-538c-4008-87e2-7efe32e18280
+```
 
 ### list 列出仓库或文本
 
@@ -125,7 +145,7 @@ b00204f8-41d0-43bb-8fc3-17b3a654360f README.md 我的第一个笔记本 2016-08-
 f7c7b2be-c247-4c2a-8001-186d27942cce README.md 我的第一个笔记本 2016-08-16 17:15:02
 ```
 
-## pull 从仓库中拉取文件
+### pull 从仓库中拉取文件
 
 ```
 usage: everbox.py pull [-h] [-b BOX] [-y] [files [files ...]] directory

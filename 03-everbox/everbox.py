@@ -16,6 +16,13 @@ except:
     print ('未安装evernote的扩展，请安装后重试')
     sys.exit(-1)
 
+try:
+    import socket
+    s = socket.create_connection(('sandbox.evernote.com', 80), 5)
+except Exception,e:
+    print('无法连接到evernote，请检查网络连接')
+    sys.exit(-1)
+
 dev_token = "S=s1:U=92d14:E=15de8ebccac:C=156913a9da8:P=1cd:A=en-devtoken:V=2:H=ca0bbceb23208c3cde8227aa5912761a"
 
 class LazyGet:
@@ -130,7 +137,8 @@ def get_box(id_or_name):
     return box
 
 def push_to_box(note):
-    get_box_store().createNote(dev_token, note)
+    note = get_box_store().createNote(dev_token, note)
+    return note
 
 def get_yn_input(msg):
     while True:
@@ -138,6 +146,17 @@ def get_yn_input(msg):
         if res in ('y', 'n'):
             break
     return True if res == 'y' else False
+
+def init(args):
+    boxname = args.box
+    box     = create_box(boxname)        
+    try:
+        box     = get_box_store().createNotebook(dev_token, box)
+        if not box:
+            raise
+        print ('创建成功，id为：%s' % box.guid)
+    except Exception,e:
+        print ('创建失败')
 
 def pull(args):
     dest_dir = args.directory or os.path.expanduser('~')
@@ -189,6 +208,7 @@ def list(args):
             for f in files:
                 print "%s %s" %(f.guid, f.title)
 
+    # 没有指定仓库，则列出所有仓库
     if args.box is None:
         boxes = get_boxes()
         print ('| 文本id\t\t\t| 仓库名称 |')
@@ -200,8 +220,24 @@ def list(args):
         list_box(box)
 
 def push(args):
-    box  = get_box(args.box)
-    file = os.path.exists(os.path.abspath(os.path.normpath(args.file)))
+    box      = get_box(args.box)
+    abs_path = os.path.abspath(os.path.normpath(args.file))
+    if not os.path.exists(abs_path):
+        print ('文本路径不存在')
+        return
+    try:
+        with open(abs_path, 'rb') as fp:
+            title = os.path.basename(abs_path)
+            if args.box:
+                box  = get_box(args.box)
+                file = create_file(title, fp.read(), box.guid, '')
+            else:
+                print ('无指定仓库，将使用默认仓库')
+                file = create_file(title, fp.read(), None, '')
+            push_to_box(file)
+            print ('%s 上传成功' % abs_path)
+    except Exception, e:
+        print ('上传%s时，发生异常' % f)
 
 def pushall(args):
     files  = args.files
@@ -221,7 +257,7 @@ def pushall(args):
         for f in to_add:
             try:
                 with open(f, 'rb') as fp:
-                    title             = os.path.basename(f)
+                    title = os.path.basename(f)
                     if args.box:
                         box  = get_box(args.box)
                         file = create_file(title, fp.read(), box.guid, '')
@@ -233,7 +269,6 @@ def pushall(args):
                     sys.stdout.write('已上传(%s/%s)个文本\r' % (finished, total))
                     sys.stdout.flush()
             except Exception, e:
-                print (e)
                 print ('上传%s时，发生异常' % f)
         print('已上传(%s/%s)个文本' % (finished, total))
 
@@ -262,6 +297,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='文本备份助手.')
     subparsers = parser.add_subparsers(title='操作命令')
 
+    init_cmd  = subparsers.add_parser('init', help='新建一个仓库', description='新建一个仓库')
+    init_cmd.add_argument('box', help='仓库名字')
+    init_cmd.set_defaults(func=init)
+
     push_cmd  = subparsers.add_parser('push', help='添加文本到仓库', description='添加文本到仓库')
     push_cmd.add_argument('-b', '--box', help='仓库id或仓库名字')
     push_cmd.add_argument('file')
@@ -272,7 +311,7 @@ if __name__ == '__main__':
     push_all_cmd.add_argument('files', nargs='*', help='文本路径，多个以空格间隔')
     push_all_cmd.set_defaults(func=pushall)
 
-    list_cmd = subparsers.add_parser('list', help='列出仓库文本', description='列出仓库文本')
+    list_cmd = subparsers.add_parser('list', help='列出仓库或文本', description='列出仓库或文本')
     list_cmd.add_argument('box', nargs='?', help='仓库id或仓库名字')
     list_cmd.set_defaults(func=list)
 
