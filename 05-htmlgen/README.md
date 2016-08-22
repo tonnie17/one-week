@@ -13,6 +13,16 @@ h('html') # <html></html>
 更深入的例子
 
 ```
+datas = [
+    ['1 + 1', 2],
+    ['1 + 2', 3],
+    ['2 + 2', 4]
+]
+```
+
+参数语法
+
+```
 build(h('html', c=[
         h('head', c=[
             h('title', 'My Title'),
@@ -26,7 +36,7 @@ build(h('html', c=[
                 hmap('li', 'I am {?}!', [1,2,3,4,5])
             ]),
             h('ul', c=[
-                hfor(5, lambda i: '<li>{}</li>'.format(chr(ord(str(i)) + 17)))
+                hfor(5, lambda i: h('li', '{}').format(chr(ord(str(i)) + 17)))
             ]),
             h('table', c=[
                 h('tr', c=[
@@ -39,10 +49,44 @@ build(h('html', c=[
                     ])
                 )
             ]),
-            hjs('test.js')
+            ~ hjs('test.js')
         ]),
     ]), 'test.html')
 ```
+
+注入语法
+
+```
+build(h('html') <= [
+        h('head') <= [
+            h('title', 'My Title'),
+            h('meta', charset='utf-8'),
+            hc('This is comment'),
+            hcss('test.css')
+        ],
+        h('body#main.class1 class2') <= [
+            h('h1', 'HtmlGen') * 2,
+            h('ul', extra=1) <= [
+                hmap('li', 'I am {?}!', [1,2,3,4,5])
+            ],
+            h('ul') <= [
+                hfor(5, lambda i: h('li', '{}').format(chr(ord(str(i)) + 17)))
+            ],
+            h('table') <= [
+                h('tr') <= [
+                    h('td'),
+                    heach({'name': 'result'}, lambda k, v: h('td', v))
+                ],
+                heach(datas, lambda v:
+                    h('tr') <= [
+                        heach(v, lambda v: h('td', v, style='border:1px solid black;')),
+                    ]
+                )
+            ],
+            ~ hjs('test.js') # comment,too
+        ],
+    ], 'test.html')
+```    
 
 以上代码会生成如下html：
 
@@ -57,14 +101,14 @@ build(h('html', c=[
 </head>
 
 <body id="main" class="class1 class2">
-    <h1>HtmlGen</h1>
-    <h1>HtmlGen</h1>
+    <h>HtmlGen</h>
+    <h>HtmlGen</h>
     <ul extra="1">
-        <li>I am 1!</li>
-        <li>I am 2!</li>
-        <li>I am 3!</li>
-        <li>I am 4!</li>
-        <li>I am 5!</li>
+        <li {}>I am 1!</li>
+        <li {}>I am 2!</li>
+        <li {}>I am 3!</li>
+        <li {}>I am 4!</li>
+        <li {}>I am 5!</li>
     </ul>
     <ul>
         <li>A</li>
@@ -91,9 +135,10 @@ build(h('html', c=[
             <td style="border:1px solid black;">4</td>
         </tr>
     </table>
-    <script type="text/javascript" src="test.js"></script>
+    <!-- <script type="text/javascript" src="test.js"></script> -->
 </body>
 
 </html>
 ```
+
 
