@@ -15,8 +15,7 @@ class Piece(object):
     def resolve(self):
         if self.raw:
             return self.raw
-        attrs = '' + ' '.join(['{}="{}"'.format(k, v) for k, v in self.attrs.items()])
-        attrs = ' {}'.format(attrs) if attrs else ''
+        attrs = make_attrs(self.attrs)
         self.html = self._html.format(tag=self.tag, attrs=attrs, content=self.content, childs=self.childs)
         return self.html
 
@@ -42,6 +41,10 @@ class Piece(object):
 
     __repr__ = __str__
 
+def make_attrs(attrs):
+    attrs = '' + ' '.join(['{}="{}"'.format(k, v) for k, v in attrs.items()])
+    attrs = ' {}'.format(attrs) if attrs else ''
+    return attrs
 
 tag_flg = re.compile(r'(?P<tag>[a-z]+)(\#(?P<id>[\w]+))?(\.(?P<class>[\w\s]+))?')
 
@@ -68,7 +71,7 @@ def hmap(tag, content='', datas=None, **attrs):
     for data in datas:
         html = Piece._html.format(
             tag=tag,
-            attrs=' {}'.format(attrs),
+            attrs=make_attrs(attrs),
             content=content.replace('{?}', str(data)),
             childs=''
         )

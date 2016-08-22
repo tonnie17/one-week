@@ -104,11 +104,11 @@ build(h('html') <= [
     <h>HtmlGen</h>
     <h>HtmlGen</h>
     <ul extra="1">
-        <li {}>I am 1!</li>
-        <li {}>I am 2!</li>
-        <li {}>I am 3!</li>
-        <li {}>I am 4!</li>
-        <li {}>I am 5!</li>
+        <li>I am 1!</li>
+        <li>I am 2!</li>
+        <li>I am 3!</li>
+        <li>I am 4!</li>
+        <li>I am 5!</li>
     </ul>
     <ul>
         <li>A</li>
