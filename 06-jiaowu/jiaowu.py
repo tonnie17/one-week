@@ -1,8 +1,8 @@
+#-*- coding:utf-8 -*-
+import textwrap
 import requests
 import math
-import cookielib
-import urllib2
-import urllib
+import re
 
 keyStr    = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 
@@ -45,14 +45,40 @@ def get_login_payload(username, password):
   encoded = encode_inp(username) + "%%%" + encode_inp(password)
   return {'encoded' : encoded}
 
+# 显示课表
+def show_classes(session):
+  r = session.get('http://e.zhbit.com/jsxsd/xskb/xskb_list.do')
+  data = r.content
+  classes = [['     ' for j in range(14)] for i in range(7)]
+  for i, f in enumerate(re.finditer(r'.*kbcontent1.*?>(.+?)<', data)):
+    day  = i % 7
+    time = i / 7
+    classes[day][time] = f.group(1)
+
+  for day in ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']:
+    print (day.center(27)),
+  print
+
+  i = 0
+  for time in range(14):
+    for day in range(7):
+      cls = classes[day][time]
+      if cls == '&nbsp;':
+        cls = ''
+      print (cls.center(26)),
+    print
+    i += 1
+
 def _main():
-  username = ''
-  password = ''
+  import getpass
+  username = raw_input('输入学号：')
+  password = getpass.getpass('输入密码：')
   payload  = get_login_payload(username, password)
   s = requests.Session()
   r = s.post(login_url, payload)
-  r = s.get('http://e.zhbit.com/jsxsd/xskb/xskb_list.do')
-  print r.content
+  if not r.status_code == 200:
+    raise
+  show_classes(s)
 
 if __name__ == '__main__':
   _main()
