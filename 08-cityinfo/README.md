@@ -11,7 +11,20 @@ API_KEY ＝ 'YOUR_API_KEY'
 ## 用法
 
 ```
+usage: city.py [-h] [-k KEYWORD] {info,place,bus} ...
 
+城市信息查询.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -k KEYWORD, --keyword KEYWORD
+                        关键词
+
+操作命令:
+  {info,place,bus}
+    info                查询城市简介
+    place               查询城市信息
+    bus                 查询公交信息
 ```
 
 ### 查询城市简介
