@@ -121,7 +121,7 @@ def search(from_city, to_city, train_time, ticket_type='ADULT'):
 
 # 获取ip
 def getip():
-    url    = 'http://ip.chinaz.com/'
+    url    = 'http://jsonip.com'
     opener = urllib2.urlopen(url, timeout=5)
     if url == opener.geturl():
         info = opener.read()
