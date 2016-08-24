@@ -43,9 +43,9 @@ build(h('html', c=[
                     h('td'),
                     heach(dict(name='result'), lambda k, v: h('td', v))
                 ]),
-                heach(datas, lambda k, v:
+                heach(datas, lambda v:
                     h('tr', c=[
-                        heach(v, lambda k, v: h('td', v, style='border:1px solid black;')),
+                        heach(v, lambda v: h('td', v, style='border:1px solid black;')),
                     ])
                 )
             ]),
@@ -101,8 +101,8 @@ build(h('html') <= [
 </head>
 
 <body id="main" class="class1 class2">
-    <h>HtmlGen</h>
-    <h>HtmlGen</h>
+    <h1>HtmlGen</h1>
+    <h1>HtmlGen</h1>
     <ul extra="1">
         <li>I am 1!</li>
         <li>I am 2!</li>
