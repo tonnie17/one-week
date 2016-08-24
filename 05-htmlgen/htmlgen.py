@@ -46,7 +46,7 @@ def make_attrs(attrs):
     attrs = ' {}'.format(attrs) if attrs else ''
     return attrs
 
-tag_flg = re.compile(r'(?P<tag>[a-z]+)(\#(?P<id>[\w]+))?(\.(?P<class>[\w\s]+))?')
+tag_flg = re.compile(r'(?P<tag>[\w]+)(\#(?P<id>[\w]+))?(\.(?P<class>[\w\s]+))?')
 
 def h(tag, content='', **attrs):
     if tag:
@@ -115,7 +115,6 @@ def _main():
         ['1 + 2', 3],
         ['2 + 2', 4]
     ]
-
     build(h('html') <= [
             h('head') <= [
                 h('title', 'My Title'),

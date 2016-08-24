@@ -8,13 +8,14 @@ keyStr    = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
 
 login_url = 'http://e.zhbit.com/jsxsd/xk/LoginToXk'
 
+# 模仿原js编码函数
 def encode_inp(inp):
   output = ""
   chr1   = chr2 = chr3 = ""
   enc1   = enc2 = enc3 = enc4 = ""
-  i = 0;
-  l  = len(inp)
-  while i < l:
+  i = 0
+  l = len(inp)
+  while i < l
     try:
       chr1 = ord(inp[i])
     except:
@@ -28,9 +29,9 @@ def encode_inp(inp):
     except:
       chr3 = 0
     i += 3
-    enc1 = chr1 >> 2;
-    enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
-    enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+    enc1 = chr1 >> 2
+    enc2 = ((chr1 & 3) << 4) | (chr2 >> 4)
+    enc3 = ((chr2 & 15) << 2) | (chr3 >> 6)
     enc4 = chr3 & 63;
     if chr2 == 0:
         enc3 = enc4 = 64

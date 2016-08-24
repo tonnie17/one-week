@@ -2,6 +2,12 @@
 
 把图像转为ascii字符。
 
+## 安装PIL
+
+```
+pip install Pillow
+```
+
 ## 用法
 
 ```
