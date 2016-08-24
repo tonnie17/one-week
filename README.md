@@ -7,4 +7,4 @@
  - 04. [ascci-image(ascii图形预览)](https://github.com/tonnie17/one-week/tree/master/04-ascci-image)
  - 05. [htmlgen(html生成器)](https://github.com/tonnie17/one-week/tree/master/05-htmlgen)
  - 06. [jiaowu(教务系统信息查询)](https://github.com/tonnie17/one-week/tree/master/06-jiaowu)
- - 07. [pyboa(微型web框架的简单实现)](https://github.com/tonnie17/one-week/tree/master/07-pyboa)
+ - 07. [pyboa(微型web框架的简单实现)](https://github.com/tonnie17/one-week/tree/master/07-web-pyboa)
