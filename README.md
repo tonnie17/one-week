@@ -9,3 +9,4 @@
  - 06. [jiaowu(教务系统信息查询)](https://github.com/tonnie17/one-week/tree/master/06-jiaowu)
  - 07. [pyboa(微型web框架的简单实现)](https://github.com/tonnie17/one-week/tree/master/07-web-pyboa)
  - 08. [cityinfo(城市信息服务)](https://github.com/tonnie17/one-week/tree/master/08-cityinfo)
+ - 09. [visual-data-structure(可视化数据结构)](https://github.com/tonnie17/one-week/tree/master/09-visual-data-structure)
