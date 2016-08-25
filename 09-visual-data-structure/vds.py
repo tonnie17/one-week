@@ -23,6 +23,26 @@ class Vds(object):
     def show():
         raise NotImplementedError
 
+class MatrixVds(Vds):
+    SIDE_WIDTH = 100
+
+    def show(self):
+        width  = max([len(arr) for arr in self.object]) * self.SIDE_WIDTH + 5
+        height = len(self.object) * 100 + 5
+        image  = self.get_vds(width + 10, height + 10)
+        draw   = self.get_drawer(image)
+        offset = self.SIDE_WIDTH
+
+        up = 10
+        
+        for row in self.object:
+            for i, ele in enumerate(row):
+                draw.rectangle([i * offset, up, (i + 1) * offset, up + offset], outline=(0,0,0))
+                draw.text([i * offset + offset/2, (2*up + offset)/2], str(ele), fill=(0,0,0))
+            up += offset
+
+        image.show()
+
 class ListVds(Vds):
     PER_HEIGHT = 50
     WIDTH      = 300
@@ -166,6 +186,14 @@ def _main():
     tracer = LinkListVds(l)
     tracer.show()
     l.delete(3, all=True)
+    tracer.show()
+
+    arr = [
+        [1,2],
+        [3,4,5,6],
+        [7,8,9]
+    ]
+    tracer = MatrixVds(arr)
     tracer.show()
 
 

@@ -36,3 +36,19 @@ tracer.show()
 ```
 
 ![Linklist](http://ww3.sinaimg.cn/large/006tNc79jw1f75ubfxl1cj31kw0ea75p.jpg)
+
+## 二维数组
+
+```
+from vds import MatrixVds
+
+arr = [
+    [1,2],
+    [3,4,5,6],
+    [7,8,9]
+]
+tracer = MatrixVds(arr)
+tracer.show()
+```
+
+![Matrix](http://ww2.sinaimg.cn/large/006tNc79gw1f767ck6lehj30uo0kkab7.jpg)
