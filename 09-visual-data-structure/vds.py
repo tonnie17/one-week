@@ -1,7 +1,22 @@
 #-*- coding:utf-8 -*-
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
+# font   = ImageFont.truetype('Arial.ttf', 36)
 
 class Vds(object):
+    MAX_SIZE = 20
+
+    def get_size_with_raise(self):
+        size = self.object.get_size()
+        if size > self.MAX_SIZE:
+            raise Exception('超过最大容量')
+        return size
+
+    def get_vds(self, width, height):
+        return Image.new('RGB', (width, height), (255, 255, 255))
+
+    def get_drawer(self, vds):
+        return ImageDraw.Draw(vds)
+
     def __init__(self, obj):
         self.object = obj
 
@@ -9,22 +24,21 @@ class Vds(object):
         raise NotImplementedError
 
 class ListVds(Vds):
-    MAX_SIZE   = 20
     PER_HEIGHT = 50
     WIDTH      = 300
 
     def show(self):
         width  = self.WIDTH
-        height = self.object.get_size() * self.PER_HEIGHT + 3
-        image  = Image.new('RGB', (width, height + 6), (255, 255, 255))
-        font   = ImageFont.truetype('Arial.ttf', 36)
-        draw   = ImageDraw.Draw(image)
+        height = self.get_size_with_raise() * self.PER_HEIGHT + 3
+        image  = self.get_vds(width, height + 6)
+        draw   = self.get_drawer(image)
         offset = self.PER_HEIGHT
-        start  = width / 3
-        end    = width * 2 / 3
+
+        left  = width / 3
+        right = width * 2 / 3
 
         for i, ele in enumerate(self.object):
-            draw.rectangle([start, height - (i + 1) * offset, end, height - i * offset], outline=(0,0,0))
+            draw.rectangle([left, height - (i + 1) * offset, right, height - i * offset], outline=(0,0,0))
             draw.text([width/2, height - (i + 1) * offset + offset/2], str(ele), fill=(0,0,0))
 
         image.show()
@@ -33,44 +47,33 @@ class StackVds(ListVds):
     pass
 
 class LinkListVds(Vds):
-    MAX_SIZE   = 20
     PER_WIDTH  = 100
     HEIGHT     = 200
 
     def show(self):
-        size = self.object.get_size()
-        if size > self.MAX_SIZE:
-            print ('超过最大容量')
-            return
-        width   = size * self.PER_WIDTH + 3
-        height  = self.HEIGHT
+        size   = self.get_size_with_raise()
+        width  = size * self.PER_WIDTH + 3
+        height = self.HEIGHT
 
-        image  = Image.new('RGB', (width + 6, height), (255, 255, 255))
-        font   = ImageFont.truetype('Arial.ttf', 36)
-        draw   = ImageDraw.Draw(image)
+        image  = self.get_vds(width + 6, height)
+        draw   = self.get_drawer(image)
         offset = self.PER_WIDTH
-        start  = height / 3
-        end    = height * 2 / 3
-        dis    = 10
+
+        up   = height / 3
+        down = height * 2 / 3
+        dis  = 10
 
         for i, node in enumerate(self.object):
-            draw.rectangle([width - (i + 1) * offset, start, width - i * offset - dis, end], outline=(0,0,0))
+            draw.rectangle([width - (i + 1) * offset, up, width - i * offset - dis, down], outline=(0,0,0))
             draw.text([i * offset + offset/2, height/2], str(node), fill=(0,0,0))
-            draw.line((width - i * offset - dis, (start+end)/2, width - i * offset, (start+end)/2), fill=(0,0,0))
+            draw.line((width - i * offset - dis, (up + down)/2, width - i * offset, (up + down)/2), fill=(0,0,0))
             i += 1
 
         image.show()
 
 
-
-
-
 def _main():
     class List(object):
-        MAX_SIZE   = 20
-        PER_HEIGHT = 50
-        WIDTH      = 300
-
         def __init__(self, array=None):
             self.array = array if isinstance(array, list) else []
 
@@ -84,13 +87,10 @@ def _main():
             if hasattr(self.array, key):
                 return getattr(self.array, key)
             return super().__getattr__(key)
-            
+
     class Stack(List):
         def push(self, val):
-            if self.get_size() == self.MAX_SIZE:
-                print ('超过最大容量')
-            else:
-                self.array.append(val)
+            self.array.append(val)
 
         def pop(self):
             return self.array.pop()
