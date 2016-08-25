@@ -70,27 +70,31 @@ def bus(args):
     if not ret:
         return
     res = json.loads(ret)
-    t   = PrettyTable(['路线', '上车站', '下车站', '途径站数', '预计时间', '步行距离'])
+    t   = PrettyTable(['路线', '上车站', '下车站', '途径站数', '首班车', '末班车', '预计时间', '步行距离'])
     end = False
     count = 1
     for transit in res['route']['transits']:
-        t.add_row(['方案%s' %str(count),'','','','','%s公里' % ( int(transit['walking_distance']) / 1000.0)])
+        t.add_row(['方案%s' %str(count),'','','','','', '','%s公里' % ( int(transit['walking_distance']) / 1000.0)])
         count += 1
         for segment in transit.get('segments', []):
             if not segment['bus']['buslines']:
                 end = True
-                t.add_row(['','','','','',''])
+                t.add_row(['','','','','','','',''])
             else:
-                names     = []
-                d_stops   = []
-                a_stops   = []
-                durations = []
-                stops = []
+                names       = []
+                d_stops     = []
+                a_stops     = []
+                durations   = []
+                start_times = []
+                end_times   = []
+                stops       = []
                 for bus in segment['bus']['buslines']:
                     names.append(bus['name'])
                     d_stops.append(bus['departure_stop']['name'])
                     a_stops.append(bus['arrival_stop']['name'])
                     durations.append(bus['duration'])
+                    start_times.append(bus['start_time'][:2] + ':' + bus['start_time'][2:])
+                    end_times.append(bus['end_time'][:2] + ':' + bus['end_time'][2:])
                     stops.append(bus['via_num'])
 
                 t.add_row([
@@ -99,6 +103,8 @@ def bus(args):
                     '\n'.join(d_stops),
                     '\n'.join(a_stops),
                     '\n'.join(stops),
+                    '\n'.join(start_times),
+                    '\n'.join(end_times),
                     '\n'.join(['%s分钟' %(int(d)/60) for d in durations]),
                     '',
                 ])
@@ -106,6 +112,8 @@ def bus(args):
                     end = False
                     t.add_row([
                         '---换乘---', 
+                        '',
+                        '',
                         '',
                         '',
                         '',
