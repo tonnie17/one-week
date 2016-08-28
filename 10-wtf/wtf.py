@@ -1,13 +1,5 @@
 import sys
 import subprocess
-import urllib2
-import urllib
-import re
-
-try:
-    import stackit
-except:
-    print ('require stackit')
 
 # alias ???='python /path/to/wtf.py $(fc -ln -1 | tail -n 1);'
 
@@ -32,7 +24,10 @@ def _main():
     errs = ''.join(outputs[i:])
     
     command = STACKIT_COMMAND % errs
-    subprocess.call(command, shell=True)
+    try:
+        subprocess.call(command, shell=True)
+    except:
+        print('require stackit')    
 
 if __name__ == '__main__':
     _main()

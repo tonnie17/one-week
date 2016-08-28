@@ -1,1 +1,2 @@
-raise KeyError
+a = []
+print(a[1])
