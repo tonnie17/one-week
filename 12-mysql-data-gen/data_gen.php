@@ -78,6 +78,12 @@
                     <td>
                         <select id="type_name" name="data[type][]">
                             <option></option>
+                            <option value="fromTable">从其他表中选择</option>
+                            <option value="userName">用户名</option>
+                            <option value="password">密码</option>
+                            <option value="ipv4">ip地址</option>
+                            <option value="macAddress">mac地址</option>
+                            <option value="file">文件地址</option>
                             <option value="name">姓名</option>
                             <option value="sex">性别</option>
                             <option value="company">公司</option>
@@ -87,6 +93,7 @@
                             <option value="country">国家</option>
                             <option value="region">地区</option>
                             <option value="address">地址</option>
+                            <option value="timezone">时区</option>
                             <option value="url">url</option>
                             <option value="bank">银行</option>
                             <option value="bankAccountNumber">信用卡帐号</option>
@@ -97,11 +104,11 @@
                             <option value="sha256">sha256</option>
                         </select>
                     </td>
+                    <td><input class="table_edit" name="table_name" type="hidden"/></td>
                     <td><a href="#" class="remove">删除</a></td>
                 </tr>
             </table>
             <button type="submit">导出</button>
-            <button id="preview">预览</button>
         </form>
         <script src="http://cdn.bootcss.com/jquery/2.2.1/jquery.min.js"></script>
         <script>
@@ -116,6 +123,11 @@
                         $(this).parent().parent().remove();
                     });
                 });
+                $("#type_name").change(function(e) {
+                    if (e.target.value === 'fromTable') {
+                        $(this).parent().next().find("input").style('display', 'block');
+                    }
+                });
             });
         </script>
     </body>
@@ -126,11 +138,6 @@
 require __DIR__ . '/vendor/autoload.php';
 
 use Faker\Factory;
-
-if (isset($_GET['action']) && $_GET['action'] === 'preview')
-{
-    echo '123';
-}
 
 if (isset($_POST['data']))
 { 
