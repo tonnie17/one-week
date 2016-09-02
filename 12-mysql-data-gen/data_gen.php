@@ -104,7 +104,7 @@
                             <option value="sha256">sha256</option>
                         </select>
                     </td>
-                    <td><input class="table_edit" name="table_name" type="hidden"/></td>
+                    <td><input class="table_edit" name="data[import][]" placeholder="格式：table.column" style="display:none"/></td>
                     <td><a href="#" class="remove">删除</a></td>
                 </tr>
             </table>
@@ -125,7 +125,9 @@
                 });
                 $("#type_name").change(function(e) {
                     if (e.target.value === 'fromTable') {
-                        $(this).parent().next().find("input").style('display', 'block');
+                        $(this).parent().next().find(".table_edit").show();
+                    } else {
+                        $(this).parent().next().find(".table_edit").hide();
                     }
                 });
             });
@@ -150,6 +152,7 @@ if (isset($_POST['data']))
     $table    = $_POST['table'];
     $cols     = $_POST['data']['name'];
     $types    = $_POST['data']['type'];
+    $imports  = $_POST['data']['import'];
     $count    = intval($_POST['count']) < 100000000? intval($_POST['count']) : 1;
     $rollback = $_POST['rollback'];
     $limit    = intval($_POST['limit']);
@@ -172,26 +175,11 @@ if (isset($_POST['data']))
                 $sexs = ['male', 'female'];
             }
             return $sexs[array_rand($sexs)];
+        },
+        'password' => function () use ($faker) {
+            return addslashes($faker->password);
         }
     ];
-
-    function getValsByTypes() {
-        global $faker;
-        global $lang;
-        global $types;
-        global $custom_fake;
-
-        $values = [];
-        foreach ($types as $key => $type) {
-            if (in_array($type, array_keys($custom_fake))) {
-                $val = $custom_fake[$type]();
-            } else {
-                $val = call_user_func_array(array($faker, $type), array());
-            }
-            $values[] = '"' . $val . '"';
-        }
-        return $values;
-    }
 
     $connect_str = sprintf('mysql:host=%s;port=%s;dbname=%s', $host, $port, $db);
 
@@ -208,6 +196,41 @@ if (isset($_POST['data']))
         $table,
         implode(',', $cols)
     );
+
+    function getValsByTypes() {
+        global $faker;
+        global $lang;
+        global $types;
+        global $custom_fake;
+        global $imports;
+        global $pdo;
+
+        $values = [];
+        foreach ($types as $key => $type) {
+            if ($type === 'fromTable' && !empty($imports[$key])) {
+                $res = explode('.', $imports[$key]);
+                if (count($res) != 2) {
+                    return ['NULL'];
+                }
+                $table  = $res[0];
+                $column = $res[1];
+                $query  = $pdo->prepare(sprintf("SELECT %s
+                FROM `%s` AS t1 JOIN (SELECT ROUND(RAND() * ((SELECT MAX(id) FROM `%s`)-(SELECT MIN(id) FROM `%s`))+(SELECT MIN(id) FROM `%s`)) AS id) AS t2
+                WHERE t1.id >= t2.id
+                ORDER BY t1.id LIMIT 1;", $column, $table, $table, $table, $table));
+                $query->execute();
+                $val = $query->fetchColumn();
+            }
+            else if (in_array($type, array_keys($custom_fake))) {
+                $val = $custom_fake[$type]();
+            }
+            else {
+                $val = call_user_func_array(array($faker, $type), array());
+            }
+            $values[] = '"' . $val . '"';
+        }
+        return $values;
+    }
 
     $loop_times  = ($count / 1000) > 1? ($count / 1000) : 1;
     $combine_len = ($count / 1000) > 1? 1000 : intval($count);
