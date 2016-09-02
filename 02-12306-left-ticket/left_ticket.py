@@ -14,8 +14,10 @@ from datetime import datetime
 PURPOSE_CODES   = ['ADULT', '0X00'] # 成人票，学生票
 CITY_CACHE      = None
 CITY_CACHE_FILE = '.cities'
+ADDR_CACHE_FILE = '.addr'
 CITY_LIST_URL   = 'https://kyfw.12306.cn/otn/resources/js/framework/station_name.js'
 ACTION_URL      = 'https://kyfw.12306.cn/otn/lcxxcx/query?purpose_codes={ticket_type}&queryDate={train_time}&from_station={from_city}&to_station={to_city}'
+SSL_CTX         = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
 
 # 对月份进行补零
 def add_zero(month):
@@ -26,7 +28,7 @@ def add_zero(month):
 # 默认为今天
 def default_date():
     now = datetime.now()
-    return '-'.join([str(now.year), str(add_zero(now.month)), str(now.day)])
+    return '-'.join([str(now.year), str(add_zero(now.month)), str(add_zero(now.day))])
 
 # 格式化输入日期
 # 如：
@@ -38,9 +40,9 @@ def date_format(input_date):
         return default_date()
     res = re.match(r'(([0-9]{4})[-|\\|:])?([0-9]{1,2})[-|\\|:]([0-9]{2})', input_date)
     if res:
-        year = res.group(2)
+        year  = res.group(2)
         month = res.group(3)
-        day = res.group(4)
+        day   = res.group(4)
         
         now = datetime.now()
         if not year:
@@ -60,19 +62,17 @@ def load_cities():
     if CITY_CACHE is not None:
         return CITY_CACHE
     cache_file  = os.path.join(os.path.dirname(os.path.abspath(__file__)), CITY_CACHE_FILE)
-    need_relaod = False
+    need_reload = True
     cities      = {}
     if os.path.exists(cache_file):
         with open(cache_file, 'rb') as fp:
             cities = json.load(fp)
-        if not cities:
-            need_relaod = True
-    else:
-        need_relaod = True
+        if cities:
+            need_reload = False
 
-    if need_relaod is True:
-        info    = urllib2.urlopen(CITY_LIST_URL, context=ssl_ctx).read()
-        for res in re.finditer(r'@[a-z]{3}\|(.+?)\|([A-Z]{3})\|[a-z]+?\|[a-z]+?\|', info):
+    if need_reload is True:
+        city_info = urllib2.urlopen(CITY_LIST_URL, context=SSL_CTX).read()
+        for res in re.finditer(r'@[a-z]{3}\|(.+?)\|([A-Z]{3})\|[a-z]+?\|[a-z]+?\|', city_info):
             city         = res.group(1)
             code         = res.group(2)
             cities[city] = code
@@ -83,22 +83,21 @@ def load_cities():
 
 # 查询操作
 def search(from_city, to_city, train_time, ticket_type='ADULT'):
-    ssl_ctx     = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
     cities      = load_cities()
 
     try:
         from_code = cities[from_city.decode('utf-8')]
     except KeyError:
-        print('指定起始城市%s不存在' % from_city)
+        print('指定起始站点%s不存在' % from_city)
         sys.exit(-1)
     try:
         to_code   = cities[to_city.decode('utf-8')]
     except KeyError:
-        print('指定目标城市%s不存在' % to_city)
+        print('指定目标站点%s不存在' % to_city)
         sys.exit(-1)
 
     url = ACTION_URL.format(from_city=from_code, to_city=to_code, train_time=train_time, ticket_type=ticket_type)
-    ret = json.loads(urllib2.urlopen(url, context=ssl_ctx, timeout=10).read())
+    ret = json.loads(urllib2.urlopen(url, context=SSL_CTX, timeout=10).read())
     if not ret or ret == -1 or not ret['data'].has_key('datas') or len(ret['data']['datas']) == 0:
         print('没查询到相关的车次信息')
         sys.exit(-1)
@@ -122,34 +121,31 @@ def search(from_city, to_city, train_time, ticket_type='ADULT'):
 # 获取ip
 def getip():
     url    = 'http://jsonip.com'
-    opener = urllib2.urlopen(url, timeout=5)
     if url == opener.geturl():
-        info = opener.read()
-        res  = re.search('\d+\.\d+\.\d+\.\d+',info)
+        res  = re.search('\d+\.\d+\.\d+\.\d+', urllib2.urlopen(url, timeout=5).read())
         if res:
             return res.group(0)
     return None
 
 # 根据ip获取地址
 def getaddr(fresh=False):
-    addr_cache_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.addr')
+    addr_cache_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ADDR_CACHE_FILE)
     if not fresh and os.path.exists(addr_cache_file):
         addr = None
         with open(addr_cache_file, 'rb') as fp:
             addr = fp.read()
         if addr:
             return addr
-    ip   = getip()
+    ip = getip()
 
     if not ip:
         return None
-    url  = 'http://ip.taobao.com/service/getIpInfo.php?ip=%s' % ip
-    info = urllib2.urlopen(url, timeout=5).read()
+    addr_info = urllib2.urlopen('http://ip.taobao.com/service/getIpInfo.php?ip=%s' % ip, timeout=5).read()
     city = None
-    if info:
-        info = json.loads(info)
-        city = info['data']['city']
-        city = city.encode('utf-8').replace('市', '')
+    if addr_info:
+        addr_info = json.loads(addr_info)
+        city      = addr_info['data']['city']
+        city      = city.encode('utf-8').replace('市', '')
         with open(addr_cache_file, 'w') as fp:
             fp.write(city)
     return city
@@ -171,22 +167,19 @@ def guide():
         sys.exit(-1)
 
     if city and cities.has_key(city.decode('utf-8')):
-        from_city = raw_input('请输入起始城市（输入回车为%s）：' % city)
+        from_city = raw_input('请输入起始站点（输入回车为%s）：' % city)
         if not from_city:
             from_city = city
     else:
-        from_city = raw_input('请输入起始城市：')
+        from_city = raw_input('请输入起始站点：')
     while True:
-        to_city = raw_input('请输入目的城市：')
+        to_city = raw_input('请输入目的站点：')
         if to_city:
             break
 
-    dd         = default_date()
-    train_time = raw_input('请输入出发日期（输入回车为%s）：' % dd)
-    if not train_time:
-        train_time = dd
-    else:
-        train_time = date_format(train_time)
+    dd          = default_date()
+    train_time  = raw_input('请输入出发日期（输入回车为%s）：' % dd)
+    train_time  = date_format(train_time) if train_time else dd
     ticket_type = 'ADULT' if get_yn_input('是否成人票') else '0X00'
     print('正在查询...\n')
     search(from_city, to_city, train_time, ticket_type)

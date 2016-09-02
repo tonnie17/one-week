@@ -1,27 +1,24 @@
 #-*- coding:utf-8 -*-
 from PIL import Image
 import sys
-import kmeans
 import os
 
 # 加上颜色
 class BColor:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
+    HEADER    = '\033[95m'
+    OKBLUE    = '\033[94m'
+    OKGREEN   = '\033[92m'
+    WARNING   = '\033[93m'
+    FAIL      = '\033[91m'
+    ENDC      = '\033[0m'
+    BOLD      = '\033[1m'
     UNDERLINE = '\033[4m'
 
-COLORS =  {
-   'white': (255, 255, 255),
-   'black': (0, 0, 0),
-}
-
 def _main():
-  pic      = os.path.abspath(sys.argv[1])
+  try:
+    pic      = os.path.abspath(sys.argv[1])
+  except:
+    print('指定图片路径')
   img      = Image.open(pic)
   width    = int(img.size[0])
   height   = int(img.size[1])

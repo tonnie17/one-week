@@ -55,18 +55,19 @@ def classify_by_ext(target_dir, tmp_dir):
         if not os.path.exists(dest_dir):
             os.makedirs(dest_dir)
         for file_path in file_list:
-            src  = unique_covert(os.path.relpath(file_path, target_dir))
-            dest = os.path.join(dest_dir, src)
+            filename      = unique_covert(os.path.relpath(file_path, target_dir))
+            dest          = os.path.join(dest_dir, filename)
+            rel_file_path = os.path.relpath(file_path, target_dir)
             shutil.move(file_path, dest)
-            yield (os.path.join(ext, src), os.path.relpath(file_path, target_dir))
+            yield (os.path.join(ext, filename), rel_file_path)
     yield None
 
 # 按修改时间分类
 def classify_by_mtime(target_dir, tmp_dir):
     for dir_ in os.walk(target_dir):
-        path = dir_[0]
+        base_dir = dir_[0]
         for f in dir_[2]:
-            abs_file_path = os.path.join(path, f)
+            abs_file_path = os.path.join(base_dir, f)
             rel_file_path = os.path.relpath(abs_file_path, target_dir)
             if os.path.islink(abs_file_path):
                 rel_dest_dir = 'link'
@@ -74,31 +75,32 @@ def classify_by_mtime(target_dir, tmp_dir):
             else:
                 mtime        = os.stat(abs_file_path)[8]
                 (y, m, d)    = map(str, time.localtime(mtime)[:3])
-                dest_dir     = os.path.join(tmp_dir, y, m, d)
                 rel_dest_dir = os.path.join(y, m, d)
+                dest_dir     = os.path.join(tmp_dir, rel_dest_dir)
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
-            src       = unique_covert(rel_file_path)
-            dest_file = os.path.join(dest_dir, src)
+            filename  = unique_covert(rel_file_path)
+            dest_file = os.path.join(dest_dir, filename)
             shutil.move(abs_file_path, dest_file)
-            yield (os.path.join(rel_dest_dir, src), rel_file_path)
+            yield (os.path.join(rel_dest_dir, filename), rel_file_path)
     yield None
 
 # 按字母分类
 def classify_by_first_letter(target_dir, tmp_dir):
     for dir_ in os.walk(target_dir):
-        path = dir_[0]
+        base_dir = dir_[0]
         for f in dir_[2]:
-            abs_file_path = os.path.join(path, f)
+            abs_file_path = os.path.join(base_dir, f)
             rel_file_path = os.path.relpath(abs_file_path, target_dir)
-            if f[0].isalnum():
-                dest_dir = os.path.join(tmp_dir, f[0])
+            first_char = f[0]
+            if first_char.isalnum():
+                dest_dir = os.path.join(tmp_dir, first_char)
                 if not os.path.exists(dest_dir):
                     os.makedirs(dest_dir)
-                src = unique_covert(rel_file_path)
-                dest_file = os.path.join(dest_dir, src)
+                filename  = unique_covert(rel_file_path)
+                dest_file = os.path.join(dest_dir, filename)
                 shutil.move(abs_file_path, dest_file)
-                yield (os.path.join(f[0], src), rel_file_path)
+                yield (os.path.join(first_char, filename), rel_file_path)
             else:
                 shutil.move(abs_file_path, os.path.join(tmp_dir, f))
                 yield (f, rel_file_path)
@@ -107,7 +109,7 @@ def classify_by_first_letter(target_dir, tmp_dir):
 
 def go_back(target_dir):
     target_dir = target_dir.decode('utf-8')
-    tmp_dir = os.path.join(os.path.dirname(os.path.dirname(target_dir)), str(uuid4()))
+    tmp_dir    = os.path.join(os.path.dirname(os.path.dirname(target_dir)), str(uuid4()))
     os.mkdir(tmp_dir)
     back_up_tree = {}
     back_up_file = os.path.join(target_dir, BACKUP_FILE)
