@@ -41,6 +41,15 @@
                     <td><input name="table" value="test" required="required"/></td>
                 </tr>
                 <tr>
+                    <td><p>导入方式</p></td>
+                    <td>
+                        <select name="way">
+                            <option value="loaddata">LOAD DATA</option>
+                            <option value="pdo">事务</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
                     <td><p>异常回滚</p></td>
                     <td>
                         <select name="rollback">
@@ -78,7 +87,7 @@
                     <td>
                         <select id="type_name" name="data[type][]">
                             <option></option>
-                            <option value="fromTable">从其他表中选择</option>
+                            <option value="import">从其他表中选择</option>
                             <option value="userName">用户名</option>
                             <option value="password">密码</option>
                             <option value="ipv4">ip地址</option>
@@ -104,7 +113,7 @@
                             <option value="sha256">sha256</option>
                         </select>
                     </td>
-                    <td><input class="table_edit" name="data[import][]" placeholder="格式：table.column" style="display:none"/></td>
+                    <td><input class="import" name="data[import][]" placeholder="格式：table.column" style="display:none"/></td>
                     <td><a href="#" class="remove">删除</a></td>
                 </tr>
             </table>
@@ -124,10 +133,11 @@
                     });
                 });
                 $("#type_name").change(function(e) {
-                    if (e.target.value === 'fromTable') {
-                        $(this).parent().next().find(".table_edit").show();
+                    var importInput = $(this).parent().next().find(".import");
+                    if (e.target.value === 'import') {
+                        importInput.show();
                     } else {
-                        $(this).parent().next().find(".table_edit").hide();
+                        importInput.hide();
                     }
                 });
             });
@@ -156,6 +166,7 @@ if (isset($_POST['data']))
     $count    = intval($_POST['count']) < 100000000? intval($_POST['count']) : 1;
     $rollback = $_POST['rollback'];
     $limit    = intval($_POST['limit']);
+    $way      = $_POST['way'];
 
     if ($lang == 'cn')
     {
@@ -192,12 +203,7 @@ if (isset($_POST['data']))
         exit('数据库连接失败');
     }
 
-    $base_sql = sprintf('INSERT INTO %s (%s) VALUES ',
-        $table,
-        implode(',', $cols)
-    );
-
-    function getValsByTypes() {
+    function getValsByTypes($addQuotes=true) {
         global $faker;
         global $lang;
         global $types;
@@ -227,13 +233,14 @@ if (isset($_POST['data']))
             else {
                 $val = call_user_func_array(array($faker, $type), array());
             }
-            $values[] = '"' . $val . '"';
+            if ($addQuotes) {
+                $val = '"' . $val . '"';
+            }
+            $values[] = $val;
         }
         return $values;
     }
 
-    $loop_times  = ($count / 1000) > 1? ($count / 1000) : 1;
-    $combine_len = ($count / 1000) > 1? 1000 : intval($count);
     $progress    = 0;
     if ($limit) {
         set_time_limit($limit);
@@ -241,31 +248,57 @@ if (isset($_POST['data']))
         set_time_limit(0);
     }
 
-    $pdo->beginTransaction();
-
-    try {
+    if ($way === 'loaddata') {
+        $tmp_file   = '/tmp/export';
+        $fp         = fopen($tmp_file, 'w');
         $start_time = microtime(true);
-        for ($t = 0; $t < $loop_times; $t++) {
-            $sqls = [];
-            for ($i = 0; $i < $combine_len; $i++) {
-                $sqls[] = sprintf('(%s)', implode(',', getValsByTypes($types)));
-            }
-            $i_sql  = $base_sql . implode(',', $sqls) . ';';
-            $stmt   = $pdo->prepare($i_sql);
-            $status = $stmt->execute();
-            unset($sqls);
-            $progress += $combine_len;
+        for ($i = 0; $i < $count; $i++) {
+            fwrite($fp, implode(' ', getValsByTypes(false)) . PHP_EOL);
         }
-        $pdo->commit();
-    } catch(Exception $e) {
-        if ($rollback) {
-            $pdo->rollback();
-            exit('发生异常，执行回滚');
-        }
-        echo '发生异常，异常信息：' . $e->getMessage();
-    } finally {
+        $load_sql = sprintf('LOAD DATA INFILE "%s" INTO TABLE %s FIELDS TERMINATED BY " " (%s);',
+                        $tmp_file,
+                        $table,
+                        implode(',', $cols)
+                    );
+        $pdo->exec($load_sql);
         $end_time = microtime(true);
-        echo "执行完成，执行了" . $progress . "个语句。耗时：" . ($end_time - $start_time) . '秒';
+        echo "执行完成，执行了" . $count . "个语句。耗时：" . ($end_time - $start_time) . '秒';
+        fclose($fp);
+        unlink($tmp_file);
+    }
+    else if ($way === 'pdo') {
+        $loop_times  = ($count / 1000) > 1? ($count / 1000) : 1;
+        $combine_len = ($count / 1000) > 1? 1000 : intval($count);
+        $base_sql = sprintf('INSERT INTO %s (%s) VALUES ',
+            $table,
+            implode(',', $cols)
+        );
+        $pdo->beginTransaction();
+
+        try {
+            $start_time = microtime(true);
+            for ($t = 0; $t < $loop_times; $t++) {
+                $sqls = [];
+                for ($i = 0; $i < $combine_len; $i++) {
+                    $sqls[] = sprintf('(%s)', implode(',', getValsByTypes()));
+                }
+                $i_sql  = $base_sql . implode(',', $sqls) . ';';
+                $stmt   = $pdo->prepare($i_sql);
+                $status = $stmt->execute();
+                unset($sqls);
+                $progress += $combine_len;
+            }
+            $pdo->commit();
+        } catch(Exception $e) {
+            if ($rollback) {
+                $pdo->rollback();
+                exit('发生异常，执行回滚');
+            }
+            echo '发生异常，异常信息：' . $e->getMessage();
+        } finally {
+            $end_time = microtime(true);
+            echo "执行完成，执行了" . $progress . "个语句。耗时：" . ($end_time - $start_time) . '秒';
+        }
     }
 }
 ?>
