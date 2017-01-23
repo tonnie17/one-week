@@ -16,7 +16,7 @@ CITY_CACHE      = None
 CITY_CACHE_FILE = '.cities'
 ADDR_CACHE_FILE = '.addr'
 CITY_LIST_URL   = 'https://kyfw.12306.cn/otn/resources/js/framework/station_name.js'
-ACTION_URL      = 'https://kyfw.12306.cn/otn/lcxxcx/query?purpose_codes={ticket_type}&queryDate={train_time}&from_station={from_city}&to_station={to_city}'
+ACTION_URL      = 'https://kyfw.12306.cn/otn/leftTicket/queryZ?leftTicketDTO.train_date={train_time}&leftTicketDTO.from_station={from_city}&leftTicketDTO.to_station={to_city}&purpose_codes={ticket_type}'
 SSL_CTX         = ssl.SSLContext(ssl.PROTOCOL_TLSv1)
 
 # 对月份进行补零
@@ -97,13 +97,15 @@ def search(from_city, to_city, train_time, ticket_type='ADULT'):
         sys.exit(-1)
 
     url = ACTION_URL.format(from_city=from_code, to_city=to_code, train_time=train_time, ticket_type=ticket_type)
+    print(url)
     ret = json.loads(urllib2.urlopen(url, context=SSL_CTX, timeout=10).read())
-    if not ret or ret == -1 or not ret['data'].has_key('datas') or len(ret['data']['datas']) == 0:
+    if not ret or ret == -1 or not ret['data'] or len(ret['data']) == 0:
         print('没查询到相关的车次信息')
         sys.exit(-1)
 
     print ('车次序号     起始站 出发站 终点站 时间 一等座 二等座')
-    for r in ret['data']['datas']:
+    for r in ret['data']:
+        r = r['queryLeftNewDTO']
         if (not r['zy_num'].encode('utf-8').isdigit() 
             and not r['ze_num'].encode('utf-8').isdigit()
             or r['from_station_name'].encode('utf-8') != from_city):
@@ -121,10 +123,9 @@ def search(from_city, to_city, train_time, ticket_type='ADULT'):
 # 获取ip
 def getip():
     url    = 'http://jsonip.com'
-    if url == opener.geturl():
-        res  = re.search('\d+\.\d+\.\d+\.\d+', urllib2.urlopen(url, timeout=5).read())
-        if res:
-            return res.group(0)
+    res  = re.search('\d+\.\d+\.\d+\.\d+', urllib2.urlopen(url, timeout=5).read())
+    if res:
+        return res.group(0)
     return None
 
 # 根据ip获取地址
@@ -180,7 +181,7 @@ def guide():
     dd          = default_date()
     train_time  = raw_input('请输入出发日期（输入回车为%s）：' % dd)
     train_time  = date_format(train_time) if train_time else dd
-    ticket_type = 'ADULT' if get_yn_input('是否成人票') else '0X00'
+    ticket_type = '0X00' if get_yn_input('是否成人票') else 'ADULT'
     print('正在查询...\n')
     search(from_city, to_city, train_time, ticket_type)
 
